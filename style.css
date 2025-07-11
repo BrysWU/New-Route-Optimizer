@@ -1,0 +1,120 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
+
+#container {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 340px;
+  background: #fff;
+  box-shadow: 2px 0 6px #0001;
+  padding: 24px 16px 16px 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  z-index: 10;
+}
+
+#sidebar h1 {
+  font-size: 1.5em;
+  margin-bottom: 12px;
+}
+
+#route-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#route-form label {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+#route-form input[type="text"] {
+  padding: 8px;
+  font-size: 1em;
+  margin-bottom: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#route-form button {
+  margin-top: 4px;
+  padding: 8px;
+  font-size: 1em;
+  border: none;
+  border-radius: 4px;
+  background: #297ffb;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#route-form button[type="button"]:not(#optimize-route) {
+  background: #dedede;
+  color: #222;
+}
+
+#route-form button:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+#stops-list {
+  margin-bottom: 8px;
+}
+
+.stop-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.stop-input-row input {
+  flex: 1;
+}
+
+.remove-stop {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  padding: 5px 9px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#directions {
+  margin-top: 18px;
+  font-size: 0.98em;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+#map {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+}
+
+@media (max-width: 800px) {
+  #container {
+    flex-direction: column;
+  }
+  #sidebar {
+    width: 100vw;
+    height: auto;
+    box-shadow: none;
+    border-bottom: 1px solid #eee;
+  }
+  #map {
+    height: 60vh;
+  }
+}
