@@ -268,16 +268,31 @@ function drawMarkers(coords, addresses) {
   markers.forEach(m => map.removeLayer(m));
   markers = [];
   for (let i = 0; i < coords.length; i++) {
-    let icon = L.divIcon({
-      className: 'custom-marker',
-      html: `<div class="marker-label">${i === 0 ? 'S' : i === coords.length - 1 ? 'E' : i}</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+    let marker;
     
-    let marker = L.marker([coords[i][1], coords[i][0]], { icon: i === 0 || i === coords.length - 1 ? undefined : icon })
-      .bindPopup(addresses[i])
-      .addTo(map);
+    // Create different markers for start, end, and intermediate points
+    if (i === 0) {
+      // Start point - use default marker with green color
+      marker = L.marker([coords[i][1], coords[i][0]])
+        .bindPopup(`<strong>Start:</strong> ${addresses[i]}`);
+    } else if (i === coords.length - 1) {
+      // End point - use default marker with red color
+      marker = L.marker([coords[i][1], coords[i][0]])
+        .bindPopup(`<strong>End:</strong> ${addresses[i]}`);
+    } else {
+      // Intermediate points - use numbered markers
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div class="marker-label">${i}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+      
+      marker = L.marker([coords[i][1], coords[i][0]], { icon: icon })
+        .bindPopup(`<strong>Stop ${i}:</strong> ${addresses[i]}`);
+    }
+    
+    marker.addTo(map);
     markers.push(marker);
   }
 }
