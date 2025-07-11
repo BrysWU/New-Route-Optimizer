@@ -2,7 +2,7 @@
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const ORS_ROUTE_URL = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
 const ORS_OPTIMIZE_URL = "https://api.openrouteservice.org/optimization";
-const ORS_API_KEY = ""; // <-- Insert your OpenRouteService API key here for live demo!
+const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68"; // <-- Insert your OpenRouteService API key here for live demo!
 // Get a free key: https://openrouteservice.org/sign-up/
 
 // ---- Map Setup ----
