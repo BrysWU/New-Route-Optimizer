@@ -135,7 +135,14 @@ async function handleRoute(optimize) {
   });
 
   if (!res.ok) {
-    showDirections("Optimization API error: " + res.statusText);
+    let msg = "Optimization API error: " + res.statusText;
+    try {
+      const errData = await res.json();
+      if (errData && errData.error) {
+        msg += "<br>" + errData.error;
+      }
+    } catch {}
+    showDirections(msg);
     return;
   }
   const optData = await res.json();
@@ -146,8 +153,6 @@ async function handleRoute(optimize) {
 
   // Get new order of stops
   const routeSteps = optData.routes[0].steps;
-  // routeSteps: e.g., [{type: 'start', location: [lng,lat]}, {type:'job', id:1}, ..., {type:'end'}]
-
   let newOrderAddresses = [start];
   let newOrderCoords = [coords[0]];
   for (let step of routeSteps) {
@@ -189,14 +194,21 @@ async function drawRoute(coords, addresses) {
     method: "POST",
     headers: {
       "Authorization": ORS_API_KEY,
-      "Accept": "application/json", // FIXED: do not use geojson
+      "Accept": "application/json",
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body)
   });
 
   if (!res.ok) {
-    showDirections("Route API error: " + res.statusText);
+    let msg = "Route API error: " + res.statusText;
+    try {
+      const errData = await res.json();
+      if (errData && errData.error) {
+        msg += "<br>" + errData.error;
+      }
+    } catch {}
+    showDirections(msg);
     return;
   }
   const data = await res.json();
@@ -209,7 +221,11 @@ async function drawRoute(coords, addresses) {
   routeLayer = L.polyline(line.map(c => [c[1], c[0]]), { color: "#297ffb", weight: 6 }).addTo(map);
   fitMapToRoute(line);
   drawMarkers(coords, addresses);
-  if (data.features[0].properties && data.features[0].properties.segments && data.features[0].properties.segments[0].steps) {
+  if (
+    data.features[0].properties &&
+    data.features[0].properties.segments &&
+    data.features[0].properties.segments[0].steps
+  ) {
     showInstructions(data.features[0].properties.segments[0].steps);
   } else {
     showDirections("Route fetched, but no turn-by-turn instructions available.");
