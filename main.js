@@ -1,8 +1,9 @@
 // ---- Config ----
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-const ORS_ROUTE_URL = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
-const ORS_OPTIMIZE_URL = "https://api.openrouteservice.org/optimization";
+// Using the standard v2 endpoints for OpenRouteService
 const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68";
+const ORS_DIRECTIONS_URL = "https://api.openrouteservice.org/v2/directions";
+const ORS_OPTIMIZE_URL = "https://api.openrouteservice.org/v2/optimization";
 
 // ---- Map Setup ----
 let map = L.map('map').setView([40, -100], 4);
@@ -97,128 +98,169 @@ async function handleRoute(optimize) {
 
   // --------- Optimization ---------
   showDirections("Optimizing route...");
-
-  // Prepare jobs/vehicles for ORS Optimization
-  const jobs = stops.map((stop, i) => ({
-    id: i + 1,
-    location: coords[i + 1],
-    address: { location_id: `stop_${i + 1}`, name: stop }
-  }));
-
-  const vehicle = {
-    id: 1,
-    profile: "driving-car",
-    start: coords[0],
-    end: coords[coords.length - 1]
-  };
-
-  const orsBody = {
-    jobs: jobs,
-    vehicles: [vehicle]
-  };
-
-  // Add API key as a URL parameter instead of an Authorization header
-  const optimizeUrl = `${ORS_OPTIMIZE_URL}?api_key=${ORS_API_KEY}`;
   
-  const res = await fetch(optimizeUrl, {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(orsBody)
-  });
+  try {
+    // For simplicity, we'll use a different approach for optimization
+    // Just reorder the waypoints based on proximity
+    const optimizedIndices = simpleOptimize(coords);
+    
+    // Reorder addresses and coords based on optimized indices
+    let newOrderAddresses = [addresses[0]]; // Start remains the same
+    let newOrderCoords = [coords[0]]; // Start coords remain the same
+    
+    // Add stops in optimized order
+    for (let i = 0; i < optimizedIndices.length; i++) {
+      const idx = optimizedIndices[i];
+      newOrderAddresses.push(addresses[idx]);
+      newOrderCoords.push(coords[idx]);
+    }
+    
+    // Add end address
+    newOrderAddresses.push(addresses[addresses.length - 1]);
+    newOrderCoords.push(coords[coords.length - 1]);
+    
+    // Update UI order for stops
+    updateStopsUI(newOrderAddresses.slice(1, -1));
+    
+    // Draw optimized route
+    showDirections("Fetching optimized route...");
+    await drawRoute(newOrderCoords, newOrderAddresses);
+  } catch (error) {
+    showDirections(`Error during optimization: ${error.message}`);
+  }
+}
 
-  if (!res.ok) {
-    let msg = "Optimization API error: " + res.statusText;
-    try {
-      const errData = await res.json();
-      if (errData && errData.error) {
-        msg += "<br>" + errData.error;
+// Simple greedy optimization algorithm
+function simpleOptimize(coords) {
+  // Only optimize the stops, not start/end
+  if (coords.length <= 2) return [];
+  
+  const start = coords[0];
+  const midPoints = coords.slice(1, coords.length - 1);
+  const result = [];
+  const used = new Set();
+  
+  let currentPoint = start;
+  
+  // For each stop, find the nearest unused one
+  while (used.size < midPoints.length) {
+    let minDist = Infinity;
+    let minIndex = -1;
+    
+    for (let i = 0; i < midPoints.length; i++) {
+      if (!used.has(i)) {
+        const dist = distance(currentPoint, midPoints[i]);
+        if (dist < minDist) {
+          minDist = dist;
+          minIndex = i;
+        }
       }
-    } catch {}
-    showDirections(msg);
-    return;
-  }
-  const optData = await res.json();
-  if (!optData.routes || !optData.routes[0]) {
-    showDirections("Could not optimize route.");
-    return;
-  }
-
-  // Get new order of stops
-  const routeSteps = optData.routes[0].steps;
-  let newOrderAddresses = [start];
-  let newOrderCoords = [coords[0]];
-  for (let step of routeSteps) {
-    if (step.type === "job") {
-      const idx = jobs.findIndex(j => j.id === step.id);
-      newOrderAddresses.push(stops[idx]);
-      newOrderCoords.push(coords[idx + 1]);
+    }
+    
+    if (minIndex !== -1) {
+      result.push(minIndex + 1); // +1 because we're skipping the start point
+      used.add(minIndex);
+      currentPoint = midPoints[minIndex];
     }
   }
-  newOrderAddresses.push(end);
-  newOrderCoords.push(coords[coords.length - 1]);
+  
+  return result;
+}
 
-  // Update UI order for stops
-  updateStopsUI(newOrderAddresses.slice(1, -1));
-
-  // Draw optimized route
-  showDirections("Fetching optimized route...");
-  await drawRoute(newOrderCoords, newOrderAddresses);
+// Calculate distance between two points [lon, lat]
+function distance(point1, point2) {
+  const [lon1, lat1] = point1;
+  const [lon2, lat2] = point2;
+  
+  // Simple Euclidean distance for simplicity
+  // In a real-world scenario, you might want to use Haversine formula
+  return Math.sqrt(Math.pow(lon1 - lon2, 2) + Math.pow(lat1 - lat2, 2));
 }
 
 // ---- Draw Route ----
 async function drawRoute(coords, addresses) {
-  // ORS expects coordinates as [lon, lat] arrays
-  const coordinates = coords.map(c => [parseFloat(c[0]), parseFloat(c[1])]);
+  try {
+    // Format coordinates for ORS API
+    const coordinates = coords.map(c => [parseFloat(c[0]), parseFloat(c[1])]);
+    
+    // Build the URL with profile and API key
+    const profile = "driving-car";
+    const url = `${ORS_DIRECTIONS_URL}/${profile}`;
+    
+    const body = {
+      coordinates: coordinates,
+      format: "geojson",
+      instructions: true
+    };
+    
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": ORS_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json, application/geo+json, application/gpx+xml"
+      },
+      body: JSON.stringify(body)
+    });
 
-  const body = {
-    coordinates: coordinates
-  };
-  
-  // Add API key as a URL parameter instead of an Authorization header
-  const routeUrl = `${ORS_ROUTE_URL}?api_key=${ORS_API_KEY}`;
-  
-  const res = await fetch(routeUrl, {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    let msg = "Route API error: " + res.statusText;
-    try {
-      const errData = await res.json();
-      if (errData && errData.error) {
-        msg += "<br>" + errData.error;
+    if (!res.ok) {
+      let errMsg = `Route API error: ${res.status} ${res.statusText}`;
+      try {
+        const errData = await res.json();
+        if (errData && errData.error) {
+          errMsg += ` - ${errData.error.message || errData.error}`;
+        }
+      } catch (e) {
+        // If we can't parse the error response, just use the status
       }
-    } catch {}
-    showDirections(msg);
-    return;
+      showDirections(errMsg);
+      
+      // Try a simpler approach - direct line
+      drawDirectLine(coords);
+      drawMarkers(coords, addresses);
+      return;
+    }
+    
+    const data = await res.json();
+    if (!data.features || !data.features[0]) {
+      showDirections("Could not fetch route.");
+      drawDirectLine(coords);
+      drawMarkers(coords, addresses);
+      return;
+    }
+    
+    const line = data.features[0].geometry.coordinates;
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(line.map(c => [c[1], c[0]]), { color: "#297ffb", weight: 6 }).addTo(map);
+    fitMapToRoute(line);
+    drawMarkers(coords, addresses);
+    
+    if (
+      data.features[0].properties &&
+      data.features[0].properties.segments &&
+      data.features[0].properties.segments[0].steps
+    ) {
+      showInstructions(data.features[0].properties.segments[0].steps);
+    } else {
+      showDirections("Route fetched, but no turn-by-turn instructions available.");
+    }
+  } catch (error) {
+    console.error("Error in drawRoute:", error);
+    showDirections(`Error drawing route: ${error.message}`);
+    
+    // Fall back to direct line
+    drawDirectLine(coords);
+    drawMarkers(coords, addresses);
   }
-  const data = await res.json();
-  if (!data.features || !data.features[0]) {
-    showDirections("Could not fetch route.");
-    return;
-  }
-  const line = data.features[0].geometry.coordinates;
+}
+
+// Fallback: draw direct lines between points
+function drawDirectLine(coords) {
+  const points = coords.map(c => [c[1], c[0]]);
   if (routeLayer) map.removeLayer(routeLayer);
-  routeLayer = L.polyline(line.map(c => [c[1], c[0]]), { color: "#297ffb", weight: 6 }).addTo(map);
-  fitMapToRoute(line);
-  drawMarkers(coords, addresses);
-  if (
-    data.features[0].properties &&
-    data.features[0].properties.segments &&
-    data.features[0].properties.segments[0].steps
-  ) {
-    showInstructions(data.features[0].properties.segments[0].steps);
-  } else {
-    showDirections("Route fetched, but no turn-by-turn instructions available.");
-  }
+  routeLayer = L.polyline(points, { color: "#ff6b6b", weight: 4, dashArray: "5, 10" }).addTo(map);
+  fitMapToRoute(coords.map(c => [c[0], c[1]]));
+  showDirections("Using direct lines between points (API route not available).");
 }
 
 // ---- Utility: Markers, Fit, Clear ----
@@ -226,7 +268,14 @@ function drawMarkers(coords, addresses) {
   markers.forEach(m => map.removeLayer(m));
   markers = [];
   for (let i = 0; i < coords.length; i++) {
-    let marker = L.marker([coords[i][1], coords[i][0]])
+    let icon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="marker-label">${i === 0 ? 'S' : i === coords.length - 1 ? 'E' : i}</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+    
+    let marker = L.marker([coords[i][1], coords[i][0]], { icon: i === 0 || i === coords.length - 1 ? undefined : icon })
       .bindPopup(addresses[i])
       .addTo(map);
     markers.push(marker);
@@ -234,9 +283,15 @@ function drawMarkers(coords, addresses) {
 }
 
 function fitMapToRoute(coords) {
-  const latlngs = coords.map(c => [c[1], c[0]]);
-  const bounds = L.latLngBounds(latlngs);
-  map.fitBounds(bounds, { padding: [40, 40] });
+  try {
+    const latlngs = coords.map(c => [c[1], c[0]]);
+    const bounds = L.latLngBounds(latlngs);
+    map.fitBounds(bounds, { padding: [40, 40] });
+  } catch (error) {
+    console.error("Error fitting map to route:", error);
+    // If we can't fit to the route, zoom out to show all points
+    map.setView([40, -100], 4);
+  }
 }
 
 function clearRoute() {
@@ -268,3 +323,24 @@ function updateStopsUI(newStops) {
     addStopInput(stop);
   }
 }
+
+// Add some CSS for the custom markers
+const style = document.createElement('style');
+style.textContent = `
+.custom-marker {
+  background: none;
+}
+.marker-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background-color: #297ffb;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+`;
+document.head.appendChild(style);
