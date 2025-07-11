@@ -2,7 +2,7 @@
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const ORS_ROUTE_URL = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
 const ORS_OPTIMIZE_URL = "https://api.openrouteservice.org/optimization";
-const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68"; // Your actual API key
+const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68";
 
 // ---- Map Setup ----
 let map = L.map('map').setView([40, -100], 4);
@@ -99,10 +99,9 @@ async function handleRoute(optimize) {
   showDirections("Optimizing route...");
 
   // Prepare jobs/vehicles for ORS Optimization
-  // Start/end are fixed, stops can be reordered
   const jobs = stops.map((stop, i) => ({
     id: i + 1,
-    location: coords[i + 1], // stops start from index 1
+    location: coords[i + 1],
     address: { location_id: `stop_${i + 1}`, name: stop }
   }));
 
@@ -220,7 +219,6 @@ async function drawRoute(coords, addresses) {
 
 // ---- Utility: Markers, Fit, Clear ----
 function drawMarkers(coords, addresses) {
-  // Remove old
   markers.forEach(m => map.removeLayer(m));
   markers = [];
   for (let i = 0; i < coords.length; i++) {
@@ -261,7 +259,6 @@ function showInstructions(steps) {
 
 // ---- UI: Update Stops Order ----
 function updateStopsUI(newStops) {
-  // Remove all current stops
   stopsList.innerHTML = '<label>Stops</label>';
   for (let stop of newStops) {
     addStopInput(stop);
