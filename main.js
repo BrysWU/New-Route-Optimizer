@@ -117,10 +117,12 @@ async function handleRoute(optimize) {
     vehicles: [vehicle]
   };
 
-  const res = await fetch(ORS_OPTIMIZE_URL, {
+  // Add API key as a URL parameter instead of an Authorization header
+  const optimizeUrl = `${ORS_OPTIMIZE_URL}?api_key=${ORS_API_KEY}`;
+  
+  const res = await fetch(optimizeUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${ORS_API_KEY}`,
       "Accept": "application/json",
       "Content-Type": "application/json"
     },
@@ -172,13 +174,15 @@ async function drawRoute(coords, addresses) {
   const coordinates = coords.map(c => [parseFloat(c[0]), parseFloat(c[1])]);
 
   const body = {
-    coordinates: coordinates,
-    instructions: true
+    coordinates: coordinates
   };
-  const res = await fetch(ORS_ROUTE_URL, {
+  
+  // Add API key as a URL parameter instead of an Authorization header
+  const routeUrl = `${ORS_ROUTE_URL}?api_key=${ORS_API_KEY}`;
+  
+  const res = await fetch(routeUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${ORS_API_KEY}`,
       "Accept": "application/json",
       "Content-Type": "application/json"
     },
