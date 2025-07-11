@@ -120,7 +120,7 @@ async function handleRoute(optimize) {
   const res = await fetch(ORS_OPTIMIZE_URL, {
     method: "POST",
     headers: {
-      "Authorization": ORS_API_KEY,
+      "Authorization": `Bearer ${ORS_API_KEY}`,
       "Accept": "application/json",
       "Content-Type": "application/json"
     },
@@ -178,7 +178,7 @@ async function drawRoute(coords, addresses) {
   const res = await fetch(ORS_ROUTE_URL, {
     method: "POST",
     headers: {
-      "Authorization": ORS_API_KEY,
+      "Authorization": `Bearer ${ORS_API_KEY}`,
       "Accept": "application/json",
       "Content-Type": "application/json"
     },
