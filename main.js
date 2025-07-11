@@ -2,8 +2,7 @@
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const ORS_ROUTE_URL = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
 const ORS_OPTIMIZE_URL = "https://api.openrouteservice.org/optimization";
-const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68"; // <-- Insert your OpenRouteService API key here for live demo!
-// Get a free key: https://openrouteservice.org/sign-up/
+const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68"; // Your actual API key
 
 // ---- Map Setup ----
 let map = L.map('map').setView([40, -100], 4);
@@ -97,11 +96,6 @@ async function handleRoute(optimize) {
   }
 
   // --------- Optimization ---------
-  if (!ORS_API_KEY) {
-    showDirections('Optimization requires an OpenRouteService API key. <a href="https://openrouteservice.org/sign-up/" target="_blank">Get one here</a> and set it in main.js');
-    return;
-  }
-
   showDirections("Optimizing route...");
 
   // Prepare jobs/vehicles for ORS Optimization
@@ -175,19 +169,11 @@ async function handleRoute(optimize) {
 
 // ---- Draw Route ----
 async function drawRoute(coords, addresses) {
-  if (!ORS_API_KEY) {
-    // Use basic linestring if no API key
-    if (routeLayer) map.removeLayer(routeLayer);
-    routeLayer = L.polyline(coords.map(c => [c[1], c[0]]), { color: "#297ffb", weight: 5 }).addTo(map);
-    fitMapToRoute(coords);
-    drawMarkers(coords, addresses);
-    showDirections("Route shown (no turn-by-turn directions without API key)");
-    return;
-  }
+  // ORS expects coordinates as [lon, lat] arrays
+  const coordinates = coords.map(c => [parseFloat(c[0]), parseFloat(c[1])]);
 
-  // Use ORS Directions API for detailed route
   const body = {
-    coordinates: coords,
+    coordinates: coordinates,
     instructions: true
   };
   const res = await fetch(ORS_ROUTE_URL, {
@@ -280,9 +266,4 @@ function updateStopsUI(newStops) {
   for (let stop of newStops) {
     addStopInput(stop);
   }
-}
-
-// ---- Demo Info ----
-if (!ORS_API_KEY) {
-  showDirections('For route optimization and turn-by-turn directions, insert your OpenRouteService API key in <code>main.js</code>. <a href="https://openrouteservice.org/sign-up/" target="_blank">Get one here.</a>');
 }
