@@ -189,7 +189,7 @@ async function drawRoute(coords, addresses) {
     method: "POST",
     headers: {
       "Authorization": ORS_API_KEY,
-      "Accept": "application/json",
+      "Accept": "application/json", // FIXED: do not use geojson
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body)
@@ -209,7 +209,11 @@ async function drawRoute(coords, addresses) {
   routeLayer = L.polyline(line.map(c => [c[1], c[0]]), { color: "#297ffb", weight: 6 }).addTo(map);
   fitMapToRoute(line);
   drawMarkers(coords, addresses);
-  showInstructions(data.features[0].properties.segments[0].steps);
+  if (data.features[0].properties && data.features[0].properties.segments && data.features[0].properties.segments[0].steps) {
+    showInstructions(data.features[0].properties.segments[0].steps);
+  } else {
+    showDirections("Route fetched, but no turn-by-turn instructions available.");
+  }
 }
 
 // ---- Utility: Markers, Fit, Clear ----
