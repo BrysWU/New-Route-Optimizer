@@ -3,7 +3,6 @@ const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 // Using the standard v2 endpoints for OpenRouteService
 const ORS_API_KEY = "5b3ce3597851110001cf62480254e0b699d0425295d7d53103384a68";
 const ORS_DIRECTIONS_URL = "https://api.openrouteservice.org/v2/directions";
-const ORS_OPTIMIZE_URL = "https://api.openrouteservice.org/v2/optimization";
 
 // ---- Map Setup ----
 let map = L.map('map').setView([40, -100], 4);
@@ -217,7 +216,7 @@ async function drawRoute(coords, addresses) {
       
       // Try a simpler approach - direct line
       drawDirectLine(coords);
-      drawMarkers(coords, addresses);
+      drawMarkersSimple(coords, addresses);
       return;
     }
     
@@ -225,7 +224,7 @@ async function drawRoute(coords, addresses) {
     if (!data.features || !data.features[0]) {
       showDirections("Could not fetch route.");
       drawDirectLine(coords);
-      drawMarkers(coords, addresses);
+      drawMarkersSimple(coords, addresses);
       return;
     }
     
@@ -233,7 +232,7 @@ async function drawRoute(coords, addresses) {
     if (routeLayer) map.removeLayer(routeLayer);
     routeLayer = L.polyline(line.map(c => [c[1], c[0]]), { color: "#297ffb", weight: 6 }).addTo(map);
     fitMapToRoute(line);
-    drawMarkers(coords, addresses);
+    drawMarkersSimple(coords, addresses);
     
     if (
       data.features[0].properties &&
@@ -250,7 +249,7 @@ async function drawRoute(coords, addresses) {
     
     // Fall back to direct line
     drawDirectLine(coords);
-    drawMarkers(coords, addresses);
+    drawMarkersSimple(coords, addresses);
   }
 }
 
@@ -264,35 +263,28 @@ function drawDirectLine(coords) {
 }
 
 // ---- Utility: Markers, Fit, Clear ----
-function drawMarkers(coords, addresses) {
+function drawMarkersSimple(coords, addresses) {
+  // Clear existing markers
   markers.forEach(m => map.removeLayer(m));
   markers = [];
+  
+  // Create new markers
   for (let i = 0; i < coords.length; i++) {
-    let marker;
+    const lat = coords[i][1];
+    const lon = coords[i][0];
     
-    // Create different markers for start, end, and intermediate points
+    // Create standard markers with different popup content based on position
+    let popupContent = addresses[i];
     if (i === 0) {
-      // Start point - use default marker with green color
-      marker = L.marker([coords[i][1], coords[i][0]])
-        .bindPopup(`<strong>Start:</strong> ${addresses[i]}`);
+      popupContent = `<strong>Start:</strong> ${addresses[i]}`;
     } else if (i === coords.length - 1) {
-      // End point - use default marker with red color
-      marker = L.marker([coords[i][1], coords[i][0]])
-        .bindPopup(`<strong>End:</strong> ${addresses[i]}`);
+      popupContent = `<strong>End:</strong> ${addresses[i]}`;
     } else {
-      // Intermediate points - use numbered markers
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-label">${i}</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      });
-      
-      marker = L.marker([coords[i][1], coords[i][0]], { icon: icon })
-        .bindPopup(`<strong>Stop ${i}:</strong> ${addresses[i]}`);
+      popupContent = `<strong>Stop ${i}:</strong> ${addresses[i]}`;
     }
     
-    marker.addTo(map);
+    // Create the marker with popup
+    const marker = L.marker([lat, lon]).bindPopup(popupContent).addTo(map);
     markers.push(marker);
   }
 }
@@ -338,24 +330,3 @@ function updateStopsUI(newStops) {
     addStopInput(stop);
   }
 }
-
-// Add some CSS for the custom markers
-const style = document.createElement('style');
-style.textContent = `
-.custom-marker {
-  background: none;
-}
-.marker-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background-color: #297ffb;
-  border-radius: 50%;
-  color: white;
-  font-weight: bold;
-  font-size: 14px;
-}
-`;
-document.head.appendChild(style);
